@@ -26,7 +26,7 @@ const BRAND_DARK = "#1a4280";
 const BRAND_LIGHT = "#e8f0fa";
 
 // === ZDE VLOŽTE URL SVÉHO GOOGLE APPS SCRIPTU ===
-const WEBHOOK_URL = "https://script.google.com/a/macros/zs-kaplickeho.cz/s/AKfycbxw3DKOr725hOAKUf-P_EdeFvQxrc14cB8oOWIThx2ZgYZYv_zwTgwK3A1mq-O1L_AwXg/exec";
+const WEBHOOK_URL = "https://script.google.com/a/macros/zs-kaplickeho.cz/s/AKfycbx0Ta6D4gBBi0j7LwdgfxMqRkVIKGKikukogu0WBKXazUcaVHuh3IC58KZG_bqtBHf8/exec";
 const SECTIONS = [{
   id: "gworkspace",
   title: "Google Workspace a sdílené dokumenty",
@@ -925,14 +925,33 @@ function Results({
         })
       }))
     };
-    fetch(WEBHOOK_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }).then(() => setSendStatus("sent")).catch(() => setSendStatus("error"));
+    // Hidden form + iframe submission - bypasses CORS
+    try {
+      const iframe = document.createElement("iframe");
+      iframe.name = "test_submit_frame";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = WEBHOOK_URL;
+      form.target = "test_submit_frame";
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "payload";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(form);
+          document.body.removeChild(iframe);
+        } catch (e) {}
+      }, 5000);
+      setSendStatus("sent");
+    } catch (err) {
+      setSendStatus("error");
+    }
   }, []);
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1329,7 +1348,7 @@ function App() {
         }));
         setNameError(false);
       },
-      placeholder: "nap\u0159. Jan Nov\xE1k",
+      placeholder: "",
       style: {
         width: "100%",
         padding: "12px 16px",
@@ -1368,7 +1387,7 @@ function App() {
         }));
         setNameError(false);
       },
-      placeholder: "jan.novak@zskaplickeho.cz",
+      placeholder: "",
       style: {
         width: "100%",
         padding: "12px 16px",
