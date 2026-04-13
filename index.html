@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test digitální gramotnosti – ZŠ Kaplického</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    input:focus, textarea:focus { outline: none; }
+    button:active { transform: scale(0.98) !important; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+const {
+  useState,
+  useEffect,
+  useRef
+} = React;
+const BRAND_BLUE = "#2358A6";
+const BRAND_DARK = "#1a4280";
+const BRAND_LIGHT = "#e8f0fa";
+
+// === ZDE VLOŽTE URL SVÉHO GOOGLE APPS SCRIPTU ===
+const WEBHOOK_URL = "https://script.google.com/a/macros/zs-kaplickeho.cz/s/AKfycbxw3DKOr725hOAKUf-P_EdeFvQxrc14cB8oOWIThx2ZgYZYv_zwTgwK3A1mq-O1L_AwXg/exec";
+const SECTIONS = [{
+  id: "gworkspace",
+  title: "Google Workspace a sdílené dokumenty",
+  icon: "☁️",
+  questions: [{
+    id: "gw1",
+    type: "single",
+    text: "Učitel potřebuje, aby žáci současně pracovali na jednom dokumentu a viděli změny ostatních v reálném čase. Které řešení je nejvhodnější?",
+    options: ["Poslat dokument e-mailem každému žákovi a poté sloučit verze", "Vytvořit sdílený dokument v Google Dokumentech s oprávněním «Editor»", "Nahrát dokument na USB a předat ho mezi žáky", "Vytisknout dokument a nechat žáky psát poznámky rukou"],
+    correct: 1,
+    explanation: "Google Dokumenty umožňují simultánní spolupráci více uživatelů v reálném čase, včetně sledování změn a komentářů."
+  }, {
+    id: "gw2",
+    type: "single",
+    text: "Jaký je rozdíl mezi oprávněními «Čtenář», «Komentující» a «Editor» v Google Disku?",
+    options: ["Žádný rozdíl není, jde jen o jiné názvy", "Čtenář může pouze prohlížet, Komentující může přidávat komentáře, Editor může upravovat obsah", "Čtenář může upravovat, Komentující může mazat, Editor může pouze prohlížet", "Tato oprávnění existují pouze v Microsoft 365"],
+    correct: 1,
+    explanation: "Správné pochopení oprávnění je klíčové pro bezpečné sdílení dokumentů ve školním prostředí."
+  }, {
+    id: "gw3",
+    type: "single",
+    text: "Kolegyně vám sdílela tabulku v Google Tabulkách. Potřebujete pracovat s daty, ale nechcete změnit originál. Co uděláte?",
+    options: ["Stáhnu soubor jako .xlsx a budu pracovat offline", "Vytvořím si kopii přes Soubor → Vytvořit kopii", "Požádám kolegyni, aby mi poslala soubor e-mailem", "Budu upravovat přímo originál a pak změny vrátím zpět"],
+    correct: 1,
+    explanation: "Funkce «Vytvořit kopii» vytvoří nezávislou verzi dokumentu na vašem Disku, aniž by se změnil originál."
+  }, {
+    id: "gw4",
+    type: "multi",
+    text: "Které z následujících funkcí nabízí Google Formuláře pro učitele? (Vyberte všechny správné odpovědi)",
+    options: ["Automatické vyhodnocení kvízů s bodováním", "Export odpovědí do Google Tabulek", "Větvení otázek podle odpovědí (sekce s přesměrováním)", "Automatický překlad formuláře do všech jazyků", "Nastavení časového limitu pro vyplnění (s doplňkem)"],
+    correct: [0, 1, 2, 4],
+    explanation: "Google Formuláře nabízejí kvízy s bodováním, export do tabulek, větvení sekcí a s doplňky i časové limity. Automatický překlad není vestavěná funkce."
+  }, {
+    id: "gw5",
+    type: "single",
+    text: "Chcete v Google Dokumentech zjistit, kdo a kdy provedl konkrétní změnu v textu. Kterou funkci použijete?",
+    options: ["Komentáře", "Historii verzí (Soubor → Historie verzí → Zobrazit historii verzí)", "Nástroje → Porovnat dokumenty", "Tuto funkci Google Dokumenty nenabízejí"],
+    correct: 1,
+    explanation: "Historie verzí umožňuje zobrazit všechny změny dokumentu, včetně informací o tom, kdo a kdy je provedl, a případně se vrátit k dřívější verzi."
+  }, {
+    id: "gw6",
+    type: "single",
+    text: "Připravujete prezentaci v Google Prezentacích a chcete, aby kolega viděl vaše poznámky ke každému snímku, ale ne samotný obsah snímku. Je to možné?",
+    options: ["Ano, stačí sdílet pouze poznámky řečníka přes speciální odkaz", "Ne, Google Prezentace vždy sdílejí celý soubor – poznámky i snímky dohromady", "Ano, ale pouze v placené verzi Google Workspace", "Ano, stačí exportovat poznámky jako PDF"],
+    correct: 1,
+    explanation: "Google Prezentace neumožňují sdílet pouze poznámky řečníka odděleně. Při sdílení souboru má příjemce přístup k celému obsahu včetně poznámek."
+  }, {
+    id: "gw7",
+    type: "single",
+    text: "V Google Tabulkách potřebujete, aby určité buňky mohli upravovat pouze vybraní kolegové, zatímco zbytek tabulky zůstane uzamčený. Jak toho docílíte?",
+    options: ["To v Google Tabulkách není možné", "Pomocí funkce Data → Chráněné listy a oblasti", "Vytvořením dvou samostatných tabulek s různými oprávněními", "Pomocí funkce Formát → Podmíněné formátování"],
+    correct: 1,
+    explanation: "Funkce «Chráněné listy a oblasti» umožňuje nastavit, kteří uživatelé mohou upravovat konkrétní buňky, sloupce nebo celé listy."
+  }, {
+    id: "gw8",
+    type: "multi",
+    text: "Které z následujících tvrzení o Google Disku jsou pravdivá? (Vyberte všechny správné odpovědi)",
+    options: ["Soubory ve sdíleném disku patří týmu, ne jednotlivci", "Smazané soubory se dají obnovit z koše po neomezenou dobu", "Na Google Disk lze nahrávat i soubory, které nejsou ve formátu Google (např. .pdf, .docx)", "Ke sdílenému odkazu je možné nastavit datum expirace", "Vyhledávání na Disku umí hledat i v obsahu nahraných PDF souborů"],
+    correct: [0, 2, 3, 4],
+    explanation: "Soubory na sdíleném disku patří organizaci/týmu, lze nahrávat libovolné formáty, sdílené odkazy mohou mít expiraci a vyhledávání prohledává i obsah PDF. Koš se ale automaticky vyprázdní po 30 dnech."
+  }, {
+    id: "gw9",
+    type: "single",
+    text: "Žák vám odeslal úkol přes Google Učebnu (Classroom). Chcete mu poskytnout zpětnou vazbu přímo v jeho dokumentu, aniž byste měnili jeho text. Jaký je nejlepší postup?",
+    options: ["Přepsat části jeho textu na správné znění", "Použít funkci komentářů – označit text a přidat komentář s připomínkou", "Napsat zpětnou vazbu do samostatného e-mailu", "Vytisknout dokument a opravit ho ručně"],
+    correct: 1,
+    explanation: "Komentáře umožňují poskytnout kontextovou zpětnou vazbu přímo u konkrétního místa v textu, aniž by se měnil původní obsah žáka."
+  }, {
+    id: "gw10",
+    type: "single",
+    text: "Potřebujete vytvořit v Google Tabulkách rozbalovací seznam (dropdown), ze kterého budou uživatelé vybírat jednu z předem definovaných hodnot. Kde tuto funkci najdete?",
+    options: ["Formát → Číslo → Vlastní formát", "Data → Ověření dat (Data validation)", "Vložit → Graf", "Nástroje → Makra"],
+    correct: 1,
+    explanation: "Rozbalovací seznamy se vytvářejí pomocí funkce «Ověření dat» (Data validation), kde lze definovat seznam povolených hodnot pro danou buňku."
+  }, {
+    id: "gw11",
+    type: "selfeval",
+    text: "Jak byste ohodnotili svou schopnost pracovat s Google Diskem (nahrávání, organizace složek, sdílení, vyhledávání)?",
+    scale: ["Nepoužívám", "Základy", "Mírně pokročilý/á", "Pokročilý/á", "Expert"]
+  }, {
+    id: "gw12",
+    type: "selfeval",
+    text: "Jak často využíváte sdílené dokumenty (Google Docs/Sheets/Slides) pro spolupráci s kolegy nebo žáky?",
+    scale: ["Nikdy", "Pár×/rok", "Měsíčně", "Týdně", "Denně"]
+  }]
+}, {
+  id: "bezpecnost",
+  title: "Bezpečnost na internetu",
+  icon: "🔒",
+  questions: [{
+    id: "bz1",
+    type: "single",
+    hasImage: "phishing",
+    text: "Na snímku vidíte e-mail, který jste obdrželi do své školní schránky. Jak zareagujete?",
+    options: ["Kliknu na odkaz a změním heslo, protože je to urgentní", "Neklikám na odkaz, ověřím zprávu přímo u vedení školy jiným kanálem", "Přepošlu e-mail kolegům, aby si také změnili heslo", "Odpovím na e-mail s žádostí o potvrzení"],
+    correct: 1,
+    explanation: "Jedná se o typický phishingový útok. Nikdy neklikejte na podezřelé odkazy – vždy ověřte požadavek jiným komunikačním kanálem."
+  }, {
+    id: "bz2",
+    type: "single",
+    text: "Které z následujících hesel je z hlediska bezpečnosti nejsilnější?",
+    options: ["Skola2024", "qwerty123456", "MojePrvniAutoByloModre42!", "admin"],
+    correct: 2,
+    explanation: "Silné heslo je dlouhé, kombinuje velká a malá písmena, čísla a speciální znaky. Passphrase (heslová fráze) jako 'MojePrvniAutoByloModre42!' je bezpečná a snadno zapamatovatelná."
+  }, {
+    id: "bz3",
+    type: "multi",
+    text: "Které z následujících postupů patří mezi zásady bezpečného chování na internetu? (Vyberte všechny správné odpovědi)",
+    options: ["Používat dvoufázové ověření (2FA) všude, kde je to možné", "Používat stejné heslo pro všechny služby (aby se nezapomnělo)", "Pravidelně aktualizovat operační systém a aplikace", "Sdílet hesla s kolegy pro snazší spolupráci", "Používat správce hesel (např. Bitwarden, 1Password)"],
+    correct: [0, 2, 4],
+    explanation: "2FA, pravidelné aktualizace a správce hesel jsou základní pilíře kybernetické bezpečnosti. Sdílení hesel a používání jednoho hesla jsou naopak bezpečnostní rizika."
+  }, {
+    id: "bz4",
+    type: "single",
+    text: "Žák vám ukazuje, že na sociální síti mu píše neznámý dospělý a žádá ho o osobní fotky. Jak správně zareagujete?",
+    options: ["Řeknete žákovi, ať ho zablokuje, a dál to neřešíte", "Informujete vedení školy, školního metodika prevence a kontaktujete rodiče. Zajistíte důkazy (screenshoty)", "Napíšete tomu člověku sami, aby žáka nechal na pokoji", "Počkáte, jestli se situace nevyřeší sama"],
+    correct: 1,
+    explanation: "Jedná se o potenciální kybergrooming. Je nutné okamžitě informovat vedení, metodika prevence, kontaktovat rodiče a zajistit důkazy pro případné další řešení (policie)."
+  }, {
+    id: "bz5",
+    type: "open",
+    text: "Popište, jak byste žákům vysvětlili pojem «digitální stopa» a proč je důležité o ní vědět. Uveďte konkrétní příklad.",
+    placeholder: "Napište svou odpověď..."
+  }, {
+    id: "bz6",
+    type: "selfeval",
+    text: "Jak hodnotíte svou schopnost rozpoznat phishingový e-mail nebo podvodnou webovou stránku?",
+    scale: ["Nerozpoznám", "Spíše nejistý/á", "Většinou rozpoznám", "Rozpoznám spolehlivě", "Dokážu i učit ostatní"]
+  }]
+}, {
+  id: "ai",
+  title: "Využívání AI ve výuce",
+  icon: "🤖",
+  questions: [{
+    id: "ai1",
+    type: "single",
+    text: "Co je hlavním rizikem při nekritickém přebírání výstupů z AI chatbotů (např. ChatGPT, Claude)?",
+    options: ["AI chatboti jsou příliš pomalí", "AI může generovat nepravdivé informace (tzv. halucinace) prezentované jako fakta", "AI chatboti fungují pouze v angličtině", "AI chatboti nemají přístup k internetu, takže jsou nepoužitelní"],
+    correct: 1,
+    explanation: "Tzv. halucinace (konfabulace) jsou jedním z největších rizik AI – model může generovat přesvědčivě znějící, ale fakticky nepravdivé informace."
+  }, {
+    id: "ai2",
+    type: "multi",
+    text: "Které z následujících využití AI ve výuce považujete za vhodné a přínosné? (Vyberte všechny, které považujete za správné)",
+    options: ["Generování variant úloh a pracovních listů pro diferenciaci výuky", "Nechat žáky odevzdávat práce vygenerované AI bez úprav jako své vlastní", "Pomoc s přípravou podkladů pro hodinu (osnova, klíčové pojmy)", "Využití AI k individuální zpětné vazbě na žákovské texty", "Automatické známkování slohových prací bez kontroly učitelem"],
+    correct: [0, 2, 3],
+    explanation: "AI je skvělý pomocník pro přípravu materiálů, diferenciaci a zpětnou vazbu. Nesmí však nahrazovat kritické myšlení žáků ani odborný úsudek učitele."
+  }, {
+    id: "ai3",
+    type: "single",
+    text: "Co je to «prompt» v kontextu práce s AI?",
+    options: ["Chybové hlášení, které AI zobrazí při přetížení", "Vstupní textový pokyn nebo dotaz, kterým uživatel zadává AI úkol", "Název programovacího jazyka pro AI", "Licence na používání AI nástroje"],
+    correct: 1,
+    explanation: "Prompt je vstupní instrukce pro AI. Kvalita promptu zásadně ovlivňuje kvalitu výstupu – proto se mluví o «prompt engineeringu»."
+  }, {
+    id: "ai4",
+    type: "open",
+    text: "Navrhněte konkrétní aktivitu pro váš předmět, ve které by žáci smysluplně využili AI nástroj. Popište cíl aktivity, postup a jak byste ošetřili riziko nekritického přebírání výstupů.",
+    placeholder: "Popište aktivitu, cíl, postup a ošetření rizik..."
+  }, {
+    id: "ai5",
+    type: "selfeval",
+    text: "Jak často aktuálně využíváte AI nástroje (ChatGPT, Claude, Gemini, Copilot…) pro přípravu na výuku?",
+    scale: ["Nikdy", "Zkoušel/a jsem 1–2×", "Občas", "Pravidelně", "Je to můj hlavní pomocník"]
+  }, {
+    id: "ai6",
+    type: "selfeval",
+    text: "Jak jistě se cítíte při formulování efektivních promptů pro AI?",
+    scale: ["Vůbec ne", "Spíše nejistě", "Průměrně", "Celkem jistě", "Velmi jistě"]
+  }]
+}, {
+  id: "obecne",
+  title: "Obecná digitální gramotnost",
+  icon: "💻",
+  questions: [{
+    id: "ob1",
+    type: "single",
+    text: "Jaký formát souboru je nejvhodnější pro sdílení dokumentu, u kterého chcete zachovat formátování a zabránit snadným úpravám?",
+    options: [".docx", ".txt", ".pdf", ".html"],
+    correct: 2,
+    explanation: "PDF zachovává formátování na všech zařízeních a ztěžuje neautorizované úpravy, proto je ideální pro sdílení finálních verzí dokumentů."
+  }, {
+    id: "ob2",
+    type: "single",
+    text: "Co znamená zkratka GDPR v kontextu školství?",
+    options: ["Google Drive Personal Resources", "General Data Protection Regulation – obecné nařízení o ochraně osobních údajů", "Global Digital Performance Rating", "Grafický design pro rodiče"],
+    correct: 1,
+    explanation: "GDPR je nařízení EU o ochraně osobních údajů. Ve školství se týká nakládání s daty žáků, rodičů a zaměstnanců."
+  }, {
+    id: "ob3",
+    type: "single",
+    text: "Učitel chce žákům promítnout video z YouTube během hodiny. Co by měl z hlediska GDPR a autorských práv zvážit?",
+    options: ["Nic, YouTube je veřejně přístupné", "Měl by video stáhnout a nahrát na školní server", "Měl by ověřit licenční podmínky videa a zda je promítání v rámci výuky přípustné dle výjimky pro vzdělávání", "Musí kontaktovat autora videa a požádat o písemný souhlas"],
+    correct: 2,
+    explanation: "Autorský zákon umožňuje užití díla pro účely vzdělávání (§ 31 aut. zák.), ale je dobré rozumět podmínkám a limitům této výjimky."
+  }, {
+    id: "ob4",
+    type: "multi",
+    text: "Které z následujících nástrojů/služeb můžete využít k vytvoření interaktivní online aktivity pro žáky? (Vyberte všechny správné)",
+    options: ["Kahoot!", "Padlet", "Google Formuláře (kvíz)", "Microsoft Defragmentace disku", "Mentimeter"],
+    correct: [0, 1, 2, 4],
+    explanation: "Kahoot!, Padlet, Google Formuláře i Mentimeter jsou nástroje pro tvorbu interaktivních aktivit. Defragmentace disku je systémový nástroj a nemá s výukou nic společného."
+  }, {
+    id: "ob5",
+    type: "open",
+    text: "Popište jeden konkrétní příklad, kdy vám digitální technologie výrazně pomohly (nebo naopak zkomplikovaly) práci ve škole. Co byste příště udělali jinak?",
+    placeholder: "Popište svou zkušenost..."
+  }, {
+    id: "ob6",
+    type: "selfeval",
+    text: "Jak hodnotíte svou celkovou digitální gramotnost v kontextu požadavků moderní výuky?",
+    scale: ["Začátečník", "Mírně pokročilý", "Středně pokročilý", "Pokročilý", "Expert"]
+  }]
+}];
+const totalQuestions = SECTIONS.reduce((sum, s) => sum + s.questions.length, 0);
+function ProgressBar({
+  current,
+  total
+}) {
+  const pct = Math.round(current / total * 100);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "100%",
+      background: "#e2e8f0",
+      borderRadius: 999,
+      height: 8,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: `${pct}%`,
+      background: `linear-gradient(90deg, ${BRAND_BLUE}, #4a90d9)`,
+      height: "100%",
+      borderRadius: 999,
+      transition: "width 0.5s cubic-bezier(.4,0,.2,1)"
+    }
+  }));
+}
+function SingleChoice({
+  question,
+  value,
+  onChange
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10
+    }
+  }, question.options.map((opt, i) => {
+    const selected = value === i;
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      onClick: () => onChange(i),
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 12,
+        padding: "14px 16px",
+        border: `2px solid ${selected ? BRAND_BLUE : "#d1d5db"}`,
+        borderRadius: 12,
+        background: selected ? BRAND_LIGHT : "#fff",
+        cursor: "pointer",
+        textAlign: "left",
+        fontSize: 15,
+        lineHeight: 1.5,
+        transition: "all 0.2s",
+        fontFamily: "inherit"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 22,
+        height: 22,
+        minWidth: 22,
+        borderRadius: "50%",
+        border: `2px solid ${selected ? BRAND_BLUE : "#9ca3af"}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 1,
+        background: selected ? BRAND_BLUE : "transparent",
+        transition: "all 0.2s"
+      }
+    }, selected && /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: "#fff"
+      }
+    })), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#1e293b"
+      }
+    }, opt));
+  }));
+}
+function MultiChoice({
+  question,
+  value = [],
+  onChange
+}) {
+  const toggle = i => {
+    const next = value.includes(i) ? value.filter(x => x !== i) : [...value, i];
+    onChange(next);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10
+    }
+  }, question.options.map((opt, i) => {
+    const checked = value.includes(i);
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      onClick: () => toggle(i),
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 12,
+        padding: "14px 16px",
+        border: `2px solid ${checked ? BRAND_BLUE : "#d1d5db"}`,
+        borderRadius: 12,
+        background: checked ? BRAND_LIGHT : "#fff",
+        cursor: "pointer",
+        textAlign: "left",
+        fontSize: 15,
+        lineHeight: 1.5,
+        transition: "all 0.2s",
+        fontFamily: "inherit"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 22,
+        height: 22,
+        minWidth: 22,
+        borderRadius: 6,
+        border: `2px solid ${checked ? BRAND_BLUE : "#9ca3af"}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 1,
+        background: checked ? BRAND_BLUE : "transparent",
+        transition: "all 0.2s"
+      }
+    }, checked && /*#__PURE__*/React.createElement("svg", {
+      width: "14",
+      height: "14",
+      viewBox: "0 0 14 14",
+      fill: "none"
+    }, /*#__PURE__*/React.createElement("path", {
+      d: "M3 7L6 10L11 4",
+      stroke: "#fff",
+      strokeWidth: "2",
+      strokeLinecap: "round",
+      strokeLinejoin: "round"
+    }))), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#1e293b"
+      }
+    }, opt));
+  }));
+}
+function SelfEval({
+  question,
+  value,
+  onChange
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 0,
+      borderRadius: 12,
+      overflow: "hidden",
+      border: `2px solid #d1d5db`
+    }
+  }, question.scale.map((label, i) => {
+    const selected = value === i;
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      onClick: () => onChange(i),
+      style: {
+        flex: 1,
+        padding: "14px 4px",
+        border: "none",
+        borderRight: i < question.scale.length - 1 ? "1px solid #e5e7eb" : "none",
+        background: selected ? `linear-gradient(135deg, ${BRAND_BLUE}, ${BRAND_DARK})` : "#fff",
+        color: selected ? "#fff" : "#64748b",
+        fontWeight: selected ? 700 : 500,
+        fontSize: 12,
+        cursor: "pointer",
+        transition: "all 0.2s",
+        fontFamily: "inherit",
+        lineHeight: 1.3
+      }
+    }, label);
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "0 4px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8"
+    }
+  }, "\u2190 ni\u017E\u0161\xED"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8"
+    }
+  }, "vy\u0161\u0161\xED \u2192")));
+}
+function OpenQuestion({
+  question,
+  value = "",
+  onChange
+}) {
+  return /*#__PURE__*/React.createElement("textarea", {
+    value: value,
+    onChange: e => onChange(e.target.value),
+    placeholder: question.placeholder || "Napište svou odpověď...",
+    style: {
+      width: "100%",
+      minHeight: 130,
+      padding: 16,
+      border: `2px solid #d1d5db`,
+      borderRadius: 12,
+      fontSize: 15,
+      fontFamily: "inherit",
+      lineHeight: 1.6,
+      resize: "vertical",
+      outline: "none",
+      transition: "border-color 0.2s",
+      boxSizing: "border-box"
+    },
+    onFocus: e => e.target.style.borderColor = BRAND_BLUE,
+    onBlur: e => e.target.style.borderColor = "#d1d5db"
+  });
+}
+function PhishingEmailPreview() {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderRadius: 12,
+      overflow: "hidden",
+      border: "1px solid #dadce0",
+      marginBottom: 20,
+      fontFamily: "'Google Sans', 'Segoe UI', Arial, sans-serif",
+      fontSize: 14,
+      background: "#fff",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#f6f8fc",
+      borderBottom: "1px solid #e0e0e0",
+      padding: "8px 16px",
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 75 24",
+    width: "75",
+    height: "24",
+    style: {
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M0 5.5V19.5C0 20.88 1.12 22 2.5 22H5V10L12 15L19 10V22H21.5C22.88 22 24 20.88 24 19.5V5.5C24 3.81 22.19 2.81 20.83 3.81L12 10L3.17 3.81C1.81 2.81 0 3.81 0 5.5Z",
+    fill: "#EA4335",
+    transform: "scale(0.85)"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "24",
+    y: "17",
+    fill: "#5f6368",
+    fontSize: "16",
+    fontWeight: "500",
+    fontFamily: "'Google Sans', Arial, sans-serif"
+  }, "Gmail"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: "#eaf1fb",
+      borderRadius: 8,
+      padding: "7px 14px",
+      color: "#5f6368",
+      fontSize: 13
+    }
+  }, "Hledat v e-mailech")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "16px 20px 12px",
+      borderBottom: "1px solid #f0f0f0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      fontSize: 15,
+      color: "#202124"
+    }
+  }, "URGENTN\xCD: Aktualizace hesla - nutn\xE1 okam\u017Eit\xE1 akce!"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "#fce8e6",
+      color: "#c5221f",
+      fontSize: 10,
+      fontWeight: 700,
+      padding: "2px 8px",
+      borderRadius: 4,
+      letterSpacing: 0.3
+    }
+  }, "D\u016ELE\u017DIT\xC9")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      background: "#1a73e8",
+      color: "#fff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 700,
+      fontSize: 16,
+      flexShrink: 0
+    }
+  }, "P"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: 6,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600,
+      color: "#202124",
+      fontSize: 14
+    }
+  }, "Mgr. Pavel Zeronik"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#5f6368",
+      fontSize: 12
+    }
+  }, "<p.zeronik@skola-update.strangeweb.com>")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#5f6368",
+      fontSize: 12,
+      marginTop: 1
+    }
+  }, "komu: mn\u011B")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#5f6368",
+      fontSize: 12,
+      whiteSpace: "nowrap"
+    }
+  }, "dnes, 7:43"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "18px 20px 10px 70px",
+      color: "#3c4043",
+      lineHeight: 1.7,
+      fontSize: 14
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 14px"
+    }
+  }, "Dobr\xFD den,"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 14px"
+    }
+  }, "v r\xE1mci ", /*#__PURE__*/React.createElement("strong", null, "povinn\xE9 bezpe\u010Dnostn\xED aktualizace"), " \u0161koln\xEDch syst\xE9m\u016F v\xE1s \u017E\xE1d\xE1me o ", /*#__PURE__*/React.createElement("strong", null, "okam\u017Eitou zm\u011Bnu hesla"), " k va\u0161emu \u0161koln\xEDmu \xFA\u010Dtu. Pokud heslo nezm\u011Bn\xEDte do 24 hodin, bude v\xE1\u0161 \xFA\u010Det ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#c5221f",
+      fontWeight: 600
+    }
+  }, "do\u010Dasn\u011B zablokov\xE1n"), "."), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 14px"
+    }
+  }, "Klikn\u011Bte na tla\u010D\xEDtko n\xED\u017Ee a postupujte dle instrukc\xED:"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      margin: "8px 0 18px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-block",
+      background: "#1a73e8",
+      color: "#fff",
+      padding: "10px 28px",
+      borderRadius: 6,
+      fontWeight: 600,
+      fontSize: 14,
+      cursor: "default"
+    }
+  }, "Zm\u011Bnit heslo nyn\xED")), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 6px"
+    }
+  }, "S pozdravem,"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 4px",
+      fontWeight: 600
+    }
+  }, "Mgr. Pavel Zeronik"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 14px",
+      fontSize: 13,
+      color: "#5f6368"
+    }
+  }, "Veden\xED \u0161koly, Z\u0160 Kaplick\xE9ho, Liberec")));
+}
+function QuestionCard({
+  question,
+  answer,
+  onAnswer,
+  index
+}) {
+  const typeLabels = {
+    single: "Vyberte jednu odpověď",
+    multi: "Vyberte všechny správné odpovědi",
+    selfeval: "Sebehodnocení",
+    open: "Otevřená otázka"
+  };
+  const typeBadgeColors = {
+    single: {
+      bg: "#dbeafe",
+      color: "#1e40af"
+    },
+    multi: {
+      bg: "#fce7f3",
+      color: "#9d174d"
+    },
+    selfeval: {
+      bg: "#d1fae5",
+      color: "#065f46"
+    },
+    open: {
+      bg: "#fef3c7",
+      color: "#92400e"
+    }
+  };
+  const badge = typeBadgeColors[question.type];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fff",
+      borderRadius: 16,
+      padding: "28px 28px 24px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
+      border: "1px solid #f1f5f9"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: `linear-gradient(135deg, ${BRAND_BLUE}, ${BRAND_DARK})`,
+      color: "#fff",
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, index), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: badge.bg,
+      color: badge.color,
+      padding: "4px 12px",
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 600,
+      letterSpacing: 0.3
+    }
+  }, typeLabels[question.type])), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 16,
+      lineHeight: 1.6,
+      color: "#1e293b",
+      fontWeight: 500,
+      margin: "0 0 20px"
+    }
+  }, question.text), question.hasImage === "phishing" && /*#__PURE__*/React.createElement(PhishingEmailPreview, null), question.type === "single" && /*#__PURE__*/React.createElement(SingleChoice, {
+    question: question,
+    value: answer,
+    onChange: onAnswer
+  }), question.type === "multi" && /*#__PURE__*/React.createElement(MultiChoice, {
+    question: question,
+    value: answer,
+    onChange: onAnswer
+  }), question.type === "selfeval" && /*#__PURE__*/React.createElement(SelfEval, {
+    question: question,
+    value: answer,
+    onChange: onAnswer
+  }), question.type === "open" && /*#__PURE__*/React.createElement(OpenQuestion, {
+    question: question,
+    value: answer,
+    onChange: onAnswer
+  }));
+}
+function Results({
+  answers,
+  userInfo
+}) {
+  const [sendStatus, setSendStatus] = useState("sending");
+  let correctCount = 0;
+  let totalGradable = 0;
+  let selfevalSum = 0;
+  let selfevalCount = 0;
+  const sectionResults = [];
+  SECTIONS.forEach(section => {
+    let sCorrect = 0;
+    let sTotal = 0;
+    let sSelfSum = 0;
+    let sSelfCount = 0;
+    const details = [];
+    section.questions.forEach(q => {
+      const ans = answers[q.id];
+      if (q.type === "single") {
+        sTotal++;
+        totalGradable++;
+        const isCorrect = ans === q.correct;
+        if (isCorrect) {
+          sCorrect++;
+          correctCount++;
+        }
+        details.push({
+          q,
+          correct: isCorrect,
+          userAnswer: ans
+        });
+      } else if (q.type === "multi") {
+        sTotal++;
+        totalGradable++;
+        const isCorrect = Array.isArray(ans) && ans.length === q.correct.length && q.correct.every(c => ans.includes(c));
+        if (isCorrect) {
+          sCorrect++;
+          correctCount++;
+        }
+        details.push({
+          q,
+          correct: isCorrect,
+          userAnswer: ans
+        });
+      } else if (q.type === "selfeval") {
+        if (ans !== undefined) {
+          sSelfSum += ans;
+          sSelfCount++;
+          selfevalSum += ans;
+          selfevalCount++;
+        }
+      }
+    });
+    sectionResults.push({
+      section,
+      correct: sCorrect,
+      total: sTotal,
+      selfAvg: sSelfCount > 0 ? sSelfSum / sSelfCount : null,
+      details
+    });
+  });
+  const pct = totalGradable > 0 ? Math.round(correctCount / totalGradable * 100) : 0;
+  const selfAvg = selfevalCount > 0 ? (selfevalSum / selfevalCount).toFixed(1) : "–";
+  const getGrade = p => {
+    if (p >= 90) return {
+      label: "Vynikající",
+      color: "#059669",
+      emoji: "🌟"
+    };
+    if (p >= 70) return {
+      label: "Dobrá úroveň",
+      color: "#2563eb",
+      emoji: "👍"
+    };
+    if (p >= 50) return {
+      label: "Průměrná úroveň",
+      color: "#d97706",
+      emoji: "📚"
+    };
+    return {
+      label: "Je třeba zapracovat",
+      color: "#dc2626",
+      emoji: "💪"
+    };
+  };
+  const grade = getGrade(pct);
+  useEffect(() => {
+    if (WEBHOOK_URL === "ZDE_VLOZTE_URL_APPS_SCRIPTU") {
+      setSendStatus("no_url");
+      return;
+    }
+    const payload = {
+      userName: userInfo.name,
+      userEmail: userInfo.email,
+      timestamp: new Date().toLocaleString("cs-CZ"),
+      score: {
+        correct: correctCount,
+        total: totalGradable,
+        percentage: pct,
+        selfEvalAvg: selfevalCount > 0 ? (selfevalSum / selfevalCount).toFixed(1) : "N/A",
+        grade: grade.label
+      },
+      sections: sectionResults.map(sr => ({
+        title: sr.section.title,
+        icon: sr.section.icon,
+        correct: sr.correct,
+        total: sr.total,
+        selfAvg: sr.selfAvg !== null ? sr.selfAvg.toFixed(1) : null,
+        answers: sr.section.questions.map(q => {
+          const ans = answers[q.id];
+          const base = {
+            question: q.text.substring(0, 120),
+            type: q.type
+          };
+          if (q.type === "single") {
+            return {
+              ...base,
+              userAnswer: ans !== undefined ? q.options[ans] : "Nezodpovězeno",
+              correctAnswer: q.options[q.correct],
+              correct: ans === q.correct
+            };
+          } else if (q.type === "multi") {
+            const userSel = Array.isArray(ans) ? ans.map(i => q.options[i]).join("; ") : "Nezodpovězeno";
+            const correctSel = q.correct.map(i => q.options[i]).join("; ");
+            const isCorrect = Array.isArray(ans) && ans.length === q.correct.length && q.correct.every(c => ans.includes(c));
+            return {
+              ...base,
+              userAnswer: userSel,
+              correctAnswer: correctSel,
+              correct: isCorrect
+            };
+          } else if (q.type === "selfeval") {
+            return {
+              ...base,
+              userAnswer: ans !== undefined ? q.scale[ans] + " (" + ans + "/4)" : "Nezodpovězeno"
+            };
+          } else if (q.type === "open") {
+            return {
+              ...base,
+              userAnswer: ans || "Nezodpovězeno"
+            };
+          }
+          return base;
+        })
+      }))
+    };
+    fetch(WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }).then(() => setSendStatus("sent")).catch(() => setSendStatus("error"));
+  }, []);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 800,
+      margin: "0 auto",
+      padding: "20px 16px 60px"
+    }
+  }, sendStatus === "sending" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#eff6ff",
+      border: "1px solid #bfdbfe",
+      borderRadius: 12,
+      padding: "12px 20px",
+      marginBottom: 20,
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      fontSize: 14,
+      color: "#1e40af"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      animation: "spin 1s linear infinite",
+      display: "inline-block"
+    }
+  }, "\u23F3"), "Odes\xEDl\xE1n\xED v\xFDsledk\u016F...", /*#__PURE__*/React.createElement("style", null, `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`)), sendStatus === "sent" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#f0fdf4",
+      border: "1px solid #bbf7d0",
+      borderRadius: 12,
+      padding: "12px 20px",
+      marginBottom: 20,
+      fontSize: 14,
+      color: "#166534"
+    }
+  }, "\u2705 V\xFDsledky byly \xFAsp\u011B\u0161n\u011B odesl\xE1ny. D\u011Bkujeme za vypln\u011Bn\xED testu!"), sendStatus === "error" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fef2f2",
+      border: "1px solid #fecaca",
+      borderRadius: 12,
+      padding: "12px 20px",
+      marginBottom: 20,
+      fontSize: 14,
+      color: "#991b1b"
+    }
+  }, "\u26A0\uFE0F Odesl\xE1n\xED se nezda\u0159ilo. Kontaktujte pros\xEDm spr\xE1vce testu."), sendStatus === "no_url" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fffbeb",
+      border: "1px solid #fde68a",
+      borderRadius: 12,
+      padding: "12px 20px",
+      marginBottom: 20,
+      fontSize: 14,
+      color: "#92400e"
+    }
+  }, "\u2699\uFE0F Webhook URL nen\xED nakonfigurov\xE1no. V\xFDsledky nebyly odesl\xE1ny (testovac\xED re\u017Eim)."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "48px 32px",
+      background: `linear-gradient(135deg, ${BRAND_BLUE}08, ${BRAND_BLUE}15)`,
+      borderRadius: 24,
+      marginBottom: 32,
+      border: `2px solid ${BRAND_BLUE}20`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 48,
+      marginBottom: 8
+    }
+  }, grade.emoji), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontSize: 28,
+      fontWeight: 800,
+      color: "#0f172a",
+      margin: "0 0 4px",
+      fontFamily: "'Playfair Display', serif"
+    }
+  }, "V\xFDsledky testu"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 15,
+      color: "#64748b",
+      margin: "0 0 4px"
+    }
+  }, userInfo.name, " (", userInfo.email, ")"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 56,
+      fontWeight: 900,
+      color: grade.color,
+      margin: "16px 0 4px"
+    }
+  }, pct, " %"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      color: grade.color,
+      fontWeight: 700,
+      marginBottom: 20
+    }
+  }, grade.label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "center",
+      gap: 40,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#64748b",
+      marginBottom: 4
+    }
+  }, "Znalostn\xED ot\xE1zky"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800,
+      color: "#0f172a"
+    }
+  }, correctCount, "/", totalGradable)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#64748b",
+      marginBottom: 4
+    }
+  }, "Sebehodnocen\xED (pr\u016Fm\u011Br)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800,
+      color: "#0f172a"
+    }
+  }, selfAvg, "/4")))), sectionResults.map(sr => /*#__PURE__*/React.createElement("div", {
+    key: sr.section.id,
+    style: {
+      background: "#fff",
+      borderRadius: 16,
+      padding: 24,
+      marginBottom: 20,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+      border: "1px solid #f1f5f9"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      fontSize: 17,
+      fontWeight: 700,
+      color: "#0f172a"
+    }
+  }, sr.section.icon, " ", sr.section.title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: sr.correct === sr.total ? "#d1fae5" : sr.correct > 0 ? "#fef3c7" : "#fee2e2",
+      color: sr.correct === sr.total ? "#065f46" : sr.correct > 0 ? "#92400e" : "#991b1b",
+      padding: "4px 14px",
+      borderRadius: 999,
+      fontSize: 14,
+      fontWeight: 700
+    }
+  }, sr.correct, "/", sr.total)), sr.details.map((d, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      padding: "14px 16px",
+      marginBottom: 10,
+      borderRadius: 12,
+      background: d.correct ? "#f0fdf4" : "#fef2f2",
+      border: `1px solid ${d.correct ? "#bbf7d0" : "#fecaca"}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18,
+      marginTop: -1
+    }
+  }, d.correct ? "✅" : "❌"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 6px",
+      fontSize: 14,
+      color: "#334155",
+      lineHeight: 1.5
+    }
+  }, d.q.text.substring(0, 100), d.q.text.length > 100 ? "…" : ""), !d.correct && d.q.explanation && /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      fontSize: 13,
+      color: "#64748b",
+      lineHeight: 1.5,
+      fontStyle: "italic"
+    }
+  }, "\uD83D\uDCA1 ", d.q.explanation))))), sr.selfAvg !== null && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      borderRadius: 12,
+      background: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#64748b"
+    }
+  }, "Pr\u016Fm\u011Brn\xE9 sebehodnocen\xED v t\xE9to sekci: "), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: BRAND_BLUE
+    }
+  }, sr.selfAvg.toFixed(1), " / 4")))));
+}
+function App() {
+  const [currentSection, setCurrentSection] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showResults, setShowResults] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    email: ""
+  });
+  const [nameError, setNameError] = useState(false);
+  const topRef = useRef(null);
+  useEffect(() => {
+    if (topRef.current) topRef.current.scrollIntoView({
+      behavior: "smooth"
+    });
+  }, [currentSection, showResults]);
+  const answeredCount = Object.keys(answers).length;
+  const handleAnswer = (qId, val) => {
+    setAnswers(prev => ({
+      ...prev,
+      [qId]: val
+    }));
+  };
+  const section = SECTIONS[currentSection];
+  const sectionAnswered = section ? section.questions.filter(q => {
+    const a = answers[q.id];
+    if (a === undefined || a === null) return false;
+    if (q.type === "open") return typeof a === "string" && a.trim().length > 0;
+    if (q.type === "multi") return Array.isArray(a) && a.length > 0;
+    return true;
+  }).length : 0;
+  if (!started) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: "100vh",
+        background: `linear-gradient(160deg, #f8fafc 0%, ${BRAND_LIGHT} 100%)`,
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("link", {
+      href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap",
+      rel: "stylesheet"
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        maxWidth: 640,
+        width: "100%",
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 80,
+        height: 80,
+        background: `linear-gradient(135deg, ${BRAND_BLUE}, ${BRAND_DARK})`,
+        borderRadius: 20,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto 28px",
+        fontSize: 36,
+        boxShadow: `0 8px 32px ${BRAND_BLUE}40`
+      }
+    }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("h1", {
+      style: {
+        fontSize: 36,
+        fontWeight: 900,
+        color: "#0f172a",
+        margin: "0 0 12px",
+        fontFamily: "'Playfair Display', serif",
+        lineHeight: 1.2
+      }
+    }, "Test digit\xE1ln\xED gramotnosti"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        fontSize: 17,
+        color: "#64748b",
+        margin: "0 0 36px",
+        lineHeight: 1.6
+      }
+    }, "pro pedagogy Z\u0160 Kaplick\xE9ho, Liberec"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 20,
+        padding: "28px 32px",
+        textAlign: "left",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
+        marginBottom: 32,
+        border: "1px solid #f1f5f9"
+      }
+    }, /*#__PURE__*/React.createElement("h3", {
+      style: {
+        margin: "0 0 16px",
+        color: "#0f172a",
+        fontSize: 16,
+        fontWeight: 700
+      }
+    }, "\u2139\uFE0F O testu"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: "0 0 12px",
+        fontSize: 14,
+        lineHeight: 1.7,
+        color: "#475569"
+      }
+    }, "Test zji\u0161\u0165uje m\xEDru va\u0161\xED digit\xE1ln\xED gramotnosti v oblastech relevantn\xEDch pro modern\xED v\xFDuku. Obsahuje ", /*#__PURE__*/React.createElement("strong", null, totalQuestions, " ot\xE1zek"), " ve 4 sekc\xEDch:"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        marginBottom: 16
+      }
+    }, SECTIONS.map(s => /*#__PURE__*/React.createElement("div", {
+      key: s.id,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        fontSize: 14,
+        color: "#334155"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18
+      }
+    }, s.icon), /*#__PURE__*/React.createElement("span", null, s.title), /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: "auto",
+        color: "#94a3b8",
+        fontSize: 13
+      }
+    }, s.questions.length, " ot\xE1zek")))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#fffbeb",
+        border: "1px solid #fde68a",
+        borderRadius: 12,
+        padding: "12px 16px",
+        fontSize: 13,
+        color: "#92400e",
+        lineHeight: 1.6
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, "Typy ot\xE1zek:"), " znalostn\xED (v\xFDb\u011Br jedn\xE9/v\xEDce spr\xE1vn\xFDch odpov\u011Bd\xED), sebehodnot\xEDc\xED (\u0161k\xE1la) a otev\u0159en\xE9 (voln\xE1 odpov\u011B\u010F). V\xFDsledky budou automaticky odesl\xE1ny koordin\xE1torovi testu.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 20,
+        padding: "28px 32px",
+        textAlign: "left",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
+        marginBottom: 32,
+        border: "1px solid #f1f5f9"
+      }
+    }, /*#__PURE__*/React.createElement("h3", {
+      style: {
+        margin: "0 0 20px",
+        color: "#0f172a",
+        fontSize: 16,
+        fontWeight: 700
+      }
+    }, "\uD83D\uDC64 Identifikace"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      style: {
+        display: "block",
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#475569",
+        marginBottom: 6
+      }
+    }, "Jm\xE9no a p\u0159\xEDjmen\xED *"), /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: userInfo.name,
+      onChange: e => {
+        setUserInfo(p => ({
+          ...p,
+          name: e.target.value
+        }));
+        setNameError(false);
+      },
+      placeholder: "nap\u0159. Jan Nov\xE1k",
+      style: {
+        width: "100%",
+        padding: "12px 16px",
+        border: `2px solid ${nameError ? "#ef4444" : "#d1d5db"}`,
+        borderRadius: 12,
+        fontSize: 15,
+        fontFamily: "inherit",
+        outline: "none",
+        boxSizing: "border-box",
+        transition: "border-color 0.2s"
+      },
+      onFocus: e => e.target.style.borderColor = BRAND_BLUE,
+      onBlur: e => e.target.style.borderColor = nameError ? "#ef4444" : "#d1d5db"
+    }), nameError && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: "#ef4444",
+        marginTop: 4,
+        display: "block"
+      }
+    }, "Pros\xEDm vypl\u0148te sv\xE9 jm\xE9no")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+      style: {
+        display: "block",
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#475569",
+        marginBottom: 6
+      }
+    }, "Pracovn\xED e-mail *"), /*#__PURE__*/React.createElement("input", {
+      type: "email",
+      value: userInfo.email,
+      onChange: e => {
+        setUserInfo(p => ({
+          ...p,
+          email: e.target.value
+        }));
+        setNameError(false);
+      },
+      placeholder: "jan.novak@zskaplickeho.cz",
+      style: {
+        width: "100%",
+        padding: "12px 16px",
+        border: `2px solid ${nameError && !userInfo.email.trim() ? "#ef4444" : "#d1d5db"}`,
+        borderRadius: 12,
+        fontSize: 15,
+        fontFamily: "inherit",
+        outline: "none",
+        boxSizing: "border-box",
+        transition: "border-color 0.2s"
+      },
+      onFocus: e => e.target.style.borderColor = BRAND_BLUE,
+      onBlur: e => e.target.style.borderColor = "#d1d5db"
+    }))), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (!userInfo.name.trim() || !userInfo.email.trim()) {
+          setNameError(true);
+          return;
+        }
+        setStarted(true);
+      },
+      style: {
+        background: `linear-gradient(135deg, ${BRAND_BLUE}, ${BRAND_DARK})`,
+        color: "#fff",
+        border: "none",
+        padding: "16px 48px",
+        borderRadius: 14,
+        fontSize: 17,
+        fontWeight: 700,
+        cursor: "pointer",
+        boxShadow: `0 4px 20px ${BRAND_BLUE}40`,
+        transition: "transform 0.2s, box-shadow 0.2s",
+        fontFamily: "inherit"
+      },
+      onMouseOver: e => {
+        e.target.style.transform = "translateY(-2px)";
+        e.target.style.boxShadow = `0 8px 30px ${BRAND_BLUE}50`;
+      },
+      onMouseOut: e => {
+        e.target.style.transform = "translateY(0)";
+        e.target.style.boxShadow = `0 4px 20px ${BRAND_BLUE}40`;
+      }
+    }, "Za\u010D\xEDt test \u2192")));
+  }
+  if (showResults) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: "100vh",
+        background: `linear-gradient(160deg, #f8fafc 0%, ${BRAND_LIGHT} 100%)`,
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif"
+      }
+    }, /*#__PURE__*/React.createElement("link", {
+      href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap",
+      rel: "stylesheet"
+    }), /*#__PURE__*/React.createElement("div", {
+      ref: topRef
+    }), /*#__PURE__*/React.createElement(Results, {
+      answers: answers,
+      userInfo: userInfo
+    }));
+  }
+  let qIndex = 0;
+  for (let i = 0; i < currentSection; i++) qIndex += SECTIONS[i].questions.length;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: `linear-gradient(160deg, #f8fafc 0%, ${BRAND_LIGHT} 100%)`,
+      fontFamily: "'DM Sans', 'Segoe UI', sans-serif"
+    }
+  }, /*#__PURE__*/React.createElement("link", {
+    href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap",
+    rel: "stylesheet"
+  }), /*#__PURE__*/React.createElement("div", {
+    ref: topRef
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "sticky",
+      top: 0,
+      zIndex: 10,
+      background: "rgba(255,255,255,0.92)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid #e2e8f0",
+      padding: "14px 20px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 800,
+      margin: "0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: BRAND_BLUE
+    }
+  }, section.icon, " ", section.title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8"
+    }
+  }, answeredCount, "/", totalQuestions, " zodpov\u011Bzeno")), /*#__PURE__*/React.createElement(ProgressBar, {
+    current: answeredCount,
+    total: totalQuestions
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 12,
+      overflow: "auto"
+    }
+  }, SECTIONS.map((s, i) => /*#__PURE__*/React.createElement("button", {
+    key: s.id,
+    onClick: () => setCurrentSection(i),
+    style: {
+      padding: "6px 14px",
+      borderRadius: 999,
+      border: "none",
+      background: i === currentSection ? BRAND_BLUE : "transparent",
+      color: i === currentSection ? "#fff" : "#64748b",
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      transition: "all 0.2s",
+      fontFamily: "inherit"
+    }
+  }, s.icon, " ", s.title.split(" ")[0]))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 800,
+      margin: "0 auto",
+      padding: "24px 16px 120px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 20
+    }
+  }, section.questions.map((q, i) => /*#__PURE__*/React.createElement(QuestionCard, {
+    key: q.id,
+    question: q,
+    answer: answers[q.id],
+    onAnswer: val => handleAnswer(q.id, val),
+    index: qIndex + i + 1
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginTop: 32,
+      gap: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => currentSection > 0 && setCurrentSection(currentSection - 1),
+    disabled: currentSection === 0,
+    style: {
+      padding: "14px 28px",
+      borderRadius: 12,
+      border: `2px solid ${currentSection === 0 ? "#e2e8f0" : BRAND_BLUE}`,
+      background: "#fff",
+      color: currentSection === 0 ? "#cbd5e1" : BRAND_BLUE,
+      fontWeight: 700,
+      fontSize: 15,
+      cursor: currentSection === 0 ? "not-allowed" : "pointer",
+      fontFamily: "inherit"
+    }
+  }, "\u2190 P\u0159edchoz\xED"), currentSection < SECTIONS.length - 1 ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setCurrentSection(currentSection + 1),
+    style: {
+      padding: "14px 28px",
+      borderRadius: 12,
+      border: "none",
+      background: `linear-gradient(135deg, ${BRAND_BLUE}, ${BRAND_DARK})`,
+      color: "#fff",
+      fontWeight: 700,
+      fontSize: 15,
+      cursor: "pointer",
+      boxShadow: `0 4px 16px ${BRAND_BLUE}30`,
+      fontFamily: "inherit"
+    }
+  }, "Dal\u0161\xED sekce \u2192") : /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowResults(true),
+    style: {
+      padding: "14px 32px",
+      borderRadius: 12,
+      border: "none",
+      background: "linear-gradient(135deg, #059669, #047857)",
+      color: "#fff",
+      fontWeight: 700,
+      fontSize: 15,
+      cursor: "pointer",
+      boxShadow: "0 4px 16px rgba(5,150,105,0.3)",
+      fontFamily: "inherit"
+    }
+  }, "Vyhodnotit test \u2713"))));
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(React.createElement(App, null));
+  </script>
+</body>
+</html>
